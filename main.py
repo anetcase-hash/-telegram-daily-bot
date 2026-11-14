@@ -1,35 +1,28 @@
 import os
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+import threading
 from flask import Flask
-import threading, asyncio, datetime, pytz
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = 9118920208
-
-app = Flask(__name__)
-@app.route('/')
-def home():
-    return "Bot running!"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot live 24/7 ✅")
+    user_id = update.effective_user.id
+    await update.message.reply_text(f"Bot is LIVE! ✅\nYour ID: {user_id}\n\nSend /start again and it will reply instantly.")
 
-async def daily(context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=CHAT_ID, text="Good morning! Daily message ✅")
+def run_bot():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    print("Bot polling started...")
+    app.run_polling()
 
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-async def run_bot():
-    app_bot = Application.builder().token(BOT_TOKEN).build()
-    app_bot.add_handler(CommandHandler("start", start))
-    tz = pytz.timezone("Africa/Lagos")
-    t = datetime.time(hour=7, minute=0, tzinfo=tz)
-    app_bot.job_queue.run_daily(daily, time=t)
-    await app_bot.run_polling()
+# Fake web server so Render Web Service no crash
+flask_app = Flask(__name__)
+@flask_app.route('/')
+def home():
+    return "Bot is running!"
 
 if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    asyncio.run(run_bot())
+    threading.Thread(target=run_bot, daemon=True).start()
+    port = int(os.environ.get("PORT", 10000))
+    flask_app.run(host="0.0.0.0", port=port)
